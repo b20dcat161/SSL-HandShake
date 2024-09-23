@@ -1,6 +1,15 @@
+import socket
 from module import *
+def recv_all(sock: socket.socket, length):
+    data = b''
+    while len(data) < length:
+        more = sock.recv(length - len(data))
+        if not more:
+            raise EOFError(f"Expected {length} bytes but got {len(data)} bytes before connection closed")
+        data += more
+    return data
 def record_header_handler(header: bytes):
-    return (header[:1],header[1:3],int.from_bytes(header[3:])) #(content_type,version,fragment_length)
+    return (int.from_bytes(header[:1]),header[1:3],int.from_bytes(header[3:])) #(content_type,version,fragment_length)
 
 def handshake_header_handler(header: bytes):
     return (int.from_bytes(header[:1]),int.from_bytes(header[1:4])) #(msg_type,body_length)

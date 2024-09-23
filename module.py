@@ -220,7 +220,7 @@ class ServerHello:
     compression_method_length: int
     compression_method: bytes
     def to_bytes(self):
-        return self.server_version.to_bytes()+self.random.to_bytes()+self.session_id_length.to_bytes()+\
+        return self.server_version.to_bytes()+self.random+self.session_id_length.to_bytes()+\
             self.session_id+self.cipher_suite+self.compression_method_length.to_bytes()+self.compression_method
     
     
@@ -424,11 +424,14 @@ def calc_master_secret(pre_master_secret: int, client_random, server_random):
 @dataclass
 class Finished:
     md5_hash: bytes
+    sha_hash: bytes
     def to_bytes(self):
-        return self.md5_hash
+        return self.md5_hash+self.sha_hash
 
 def calc_md5_hash(data):
     return hashlib.md5(data).digest()
+def calc_sha_hash(data):
+    return hashlib.sha1(data).digest()
 #        md5_hash:  MD5(master_secret + pad2 + MD5(handshake_messages + Sender
 #       + master_secret + pad1));
 
@@ -447,6 +450,24 @@ def calc_md5_hash(data):
 #      CipherSuite SSL_RSA_EXPORT_WITH_DES40_CBC_SHA      = { 0x00,0x08 };
 #      CipherSuite SSL_RSA_WITH_DES_CBC_SHA               = { 0x00,0x09 };
 #      CipherSuite SSL_RSA_WITH_3DES_EDE_CBC_SHA          = { 0x00,0x0A };
+
+    #  key_block =
+    #       MD5(master_secret + SHA(`A' + master_secret +
+    #                               ServerHello.random +
+    #                               ClientHello.random)) +
+    #       MD5(master_secret + SHA(`BB' + master_secret +
+    #                               ServerHello.random +
+    #                               ClientHello.random)) +
+    #       MD5(master_secret + SHA(`CCC' + master_secret +
+    #                               ServerHello.random +
+    #                               ClientHello.random)) + [...];
+    
+    #   client_write_MAC_secret[CipherSpec.hash_size]
+    #     server_write_MAC_secret[CipherSpec.hash_size]
+    #     client_write_key[CipherSpec.key_material]
+    #     server_write_key[CipherSpec.key_material]
+    #     client_write_IV[CipherSpec.IV_size] /* non-export ciphers */
+    #     server_write_IV[CipherSpec.IV_size] /* non-export ciphers */
 
 # A.7.  The CipherSpec 
 #        enum { stream, block } CipherType;
@@ -470,11 +491,11 @@ def calc_md5_hash(data):
 
 @dataclass
 class SSLSession:
-    session_id: bytes
-    compression_method: bytes
-    cipher_spec: bytes
-    master_secret: bytes
-    is_resumable: bytes
+    session_id: bytes = b''
+    compression_method: bytes = b''
+    cipher_spec: bytes = b''
+    master_secret: bytes = b''
+    is_resumable: bytes = b''
     
 @dataclass
 class SSLConnection:
