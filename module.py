@@ -1,4 +1,5 @@
 import os
+import hashlib
 from dataclasses import dataclass, field
 from enum import _simple_enum
 
@@ -338,9 +339,9 @@ class ServerHelloDone:
 #         } ClientKeyExchange;
 @dataclass 
 class ClientDiffieHellmanPublic:
-    dh_public: bytes
+    dh_public: int
     def to_bytes(self):
-        return self.dh_public
+        return self.dh_public.to_bytes()
 @dataclass 
 class ClientKeyExchange:
     exchange_keys: ClientDiffieHellmanPublic
@@ -409,12 +410,25 @@ class ClientKeyExchange:
 #               ClientHello.random + ServerHello.random)) +
 #           MD5(pre_master_secret + SHA('CCC' + pre_master_secret +
 #               ClientHello.random + ServerHello.random));
+def calc_master_secret(pre_master_secret: int, client_random, server_random):
+    def sha1(data):
+        return hashlib.sha1(data).digest()
+    def md5(data):
+        return hashlib.md5(data).digest()
+    return b''.join(
+        md5(pre_master_secret.to_bytes()+sha1(label + pre_master_secret.to_bytes() +client_random +server_random))
+        for label in (b'A', b'BB',b'CCC')
+    )
+    
+    
 @dataclass
 class Finished:
     md5_hash: bytes
     def to_bytes(self):
         return self.md5_hash
-    
+
+def calc_md5_hash(data):
+    return hashlib.md5(data).digest()
 #        md5_hash:  MD5(master_secret + pad2 + MD5(handshake_messages + Sender
 #       + master_secret + pad1));
 
@@ -433,6 +447,7 @@ class Finished:
 #      CipherSuite SSL_RSA_EXPORT_WITH_DES40_CBC_SHA      = { 0x00,0x08 };
 #      CipherSuite SSL_RSA_WITH_DES_CBC_SHA               = { 0x00,0x09 };
 #      CipherSuite SSL_RSA_WITH_3DES_EDE_CBC_SHA          = { 0x00,0x0A };
+
 # A.7.  The CipherSpec 
 #        enum { stream, block } CipherType;
 
@@ -466,6 +481,7 @@ class SSLConnection:
     server_random: bytes = None
     client_random: bytes = None
     server_write_mac_secret: bytes =None
+    client_write_mac_secret: bytes = None
     server_write_key: bytes = None
     client_write_key: bytes = None
     sequence_numbers: bytes = None
