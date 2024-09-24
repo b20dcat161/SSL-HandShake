@@ -12,6 +12,7 @@ session_id = b''
 cipher_suite = b'\x00\x17'
 compression_method = b''
 ssl_session = SSLSession()
+ssl_session.cipher_spec = CipherSpec()
 # print('r2',random)
 ssl_connection = SSLConnection()
 ssl_connection.server_random = random.to_bytes()
@@ -68,7 +69,7 @@ while True:
             # recv = conn.recv(2048)
             # i =
             while True:
-                try:
+                # try:
                     data = recv_all(conn, 5)
                     # print(header)
                     # while True:/
@@ -117,8 +118,8 @@ while True:
                             print('dh_Yc: ',dh_Yc)
                             pre_master_secret = pow(dh_Yc,dh_Xs,dh_p)
                             print('calc pre master secret: ',pre_master_secret)
-                            ssl_session.master_sercet = calc_master_secret(pre_master_secret,ssl_connection.client_random,ssl_connection.server_random)
-                            print('Calc master secret:', ssl_session.master_sercet)
+                            ssl_session.master_secret = calc_master_secret(pre_master_secret,ssl_connection.client_random,ssl_connection.server_random)
+                            print('Calc master secret:', ssl_session.master_secret)
                         elif msg_type == 20:
                             print('recv finished')
                             print('send change cipher spec ...')
@@ -134,8 +135,15 @@ while True:
                             ssl_finish = SSLPlaintext(22,version,len(fragment),fragment).to_bytes()
                             conn.sendall(ssl_change_cipher_spec+ssl_finish)
                             # conn.sendall(ssl_finish)
+                            (ssl_connection.client_write_mac_secret,
+                            ssl_connection.server_write_mac_secret,
+                            ssl_connection.client_write_key,
+                            ssl_connection.server_write_key) = gen_key(ssl_session.master_secret,ssl_connection.client_random,ssl_connection.server_random)
+                            print(ssl_session)
+                            print(ssl_connection)
+
                     elif content_type == 20:
                         print('recv change cipher spec')
-                except Exception as e:
-                    print(f"Error: {e}")
-                    break
+                # except Exception as e:
+                #     print(f"Error: {e}")
+                #     break

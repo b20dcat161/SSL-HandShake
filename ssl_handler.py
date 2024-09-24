@@ -14,8 +14,7 @@ def record_header_handler(header: bytes):
 def handshake_header_handler(header: bytes):
     return (int.from_bytes(header[:1]),int.from_bytes(header[1:4])) #(msg_type,body_length)
 
-def gen_key(dh_p,dh_g):
-    import random
+
     
 def server_key_exchange_msg_handler(body: bytes):
     dh_p_length = int.from_bytes(body[:2])

@@ -462,13 +462,19 @@ def calc_sha_hash(data):
     #                               ServerHello.random +
     #                               ClientHello.random)) + [...];
     
-    #   client_write_MAC_secret[CipherSpec.hash_size]
-    #     server_write_MAC_secret[CipherSpec.hash_size]
+    #   client_write_MAC_secret[CipherSpec.hash_size] (16 bytes)
+    #     server_write_MAC_secret[CipherSpec.hash_size] 
     #     client_write_key[CipherSpec.key_material]
     #     server_write_key[CipherSpec.key_material]
     #     client_write_IV[CipherSpec.IV_size] /* non-export ciphers */
     #     server_write_IV[CipherSpec.IV_size] /* non-export ciphers */
-
+    
+def gen_key(master_secret,client_hello_random,server_hello_random):
+    key_block = calc_md5_hash(master_secret+calc_sha_hash(b'A'+master_secret+server_hello_random+client_hello_random)) +\
+                calc_md5_hash(master_secret+calc_sha_hash(b'BB'+master_secret+server_hello_random+client_hello_random))+\
+                calc_md5_hash(master_secret+calc_sha_hash(b'CCC'+master_secret+server_hello_random+client_hello_random))+\
+                calc_md5_hash(master_secret+calc_sha_hash(b'DDDD'+master_secret+server_hello_random+client_hello_random))
+    return (key_block[:16],key_block[16:32], key_block[32:48], key_block[48:64])
 # A.7.  The CipherSpec 
 #        enum { stream, block } CipherType;
 
@@ -490,6 +496,35 @@ def calc_sha_hash(data):
 #         } CipherSpec;
 
 @dataclass
+class CipherSpec:
+    bulk_cipher_algorithm = 'rc4'
+    mac_algorithm = 'md5'
+    cipher_type = 'stream'
+    is_exportable = False
+    hash_size = 16
+    key_masterial = 128 #kích thước client,server_write_mac_secret, + client,server_write_key
+    IV_size = 0
+
+@dataclass
+class GenericStramCipher:
+    content: bytes
+    MAC: bytes
+    
+        # hash(MAC_write_secret + pad_2 +
+        #      hash(MAC_write_secret + pad_1 + seq_num +
+        #           SSLCompressed.type + SSLCompressed.length +
+        #           SSLCompressed.fragment)); 
+def cacl_MAC():
+    return calc_md5_hash()
+#    pad_1:  The character 0x36 repeated 48 times for MD5 or 40 times for
+#       SHA.
+
+#    pad_2:  The character 0x5c repeated 48 times for MD5 or 40 times for
+#       SHA.
+
+#    seq_num:  The sequence number for this message.
+# mac được tính toán trước kgi mã hóa, mã hóa luồng mã hóa toàn bộ, bao gồm cả mac.
+@dataclass
 class SSLSession:
     session_id: bytes = b''
     compression_method: bytes = b''
@@ -505,6 +540,7 @@ class SSLConnection:
     client_write_mac_secret: bytes = None
     server_write_key: bytes = None
     client_write_key: bytes = None
+    initialization_vectors: bytes = None   
     sequence_numbers: bytes = None
     
      

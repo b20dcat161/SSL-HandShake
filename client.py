@@ -35,8 +35,6 @@ def send_and_recv(sock:socket.socket,data:bytes) -> bytes:
     global handshake_messages
     sock.sendall(data)
     # recv_data = b''
-    states = 0
-    data2= b''
     while True:
         try:
             header = recv_all(sock,5)
@@ -88,8 +86,8 @@ def send_and_recv(sock:socket.socket,data:bytes) -> bytes:
                     print(f'dh_Yc = ',dh_Yc)
                     pre_master_secret= pow(dh_Ys,dh_Xc,dh_p)
                     print('pre_master_secret: ',pre_master_secret)
-                    ssl_session.master_sercet = calc_master_secret(pre_master_secret,ssl_connection.client_random,ssl_connection.server_random)
-                    print("Calc master secret: ", ssl_session.master_sercet)
+                    ssl_session.master_secret = calc_master_secret(pre_master_secret,ssl_connection.client_random,ssl_connection.server_random)
+                    print("Calc master secret: ", ssl_session.master_secret)
                     # fragment =
                 elif msg_type == 14:
                     print('recv server hello done')
@@ -118,6 +116,12 @@ def send_and_recv(sock:socket.socket,data:bytes) -> bytes:
                     sock.sendall(ssl_client_key_exchange+ssl_change_cipher_spec+ssl_finish)
                 elif msg_type == 20:
                     print('recv finnished')
+                    (ssl_connection.client_write_mac_secret,
+                    ssl_connection.server_write_mac_secret,
+                    ssl_connection.client_write_key,
+                    ssl_connection.server_write_key) = gen_key(ssl_session.master_secret,ssl_connection.client_random,ssl_connection.server_random)
+                    print(ssl_session)
+                    print(ssl_connection)
                 else:
                     print('error type')
             elif content_type == 20:
